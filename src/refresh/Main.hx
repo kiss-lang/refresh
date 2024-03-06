@@ -1,4 +1,4 @@
-package template;
+package refresh;
 
 class Main {
     static function main() {

@@ -1,0 +1,104 @@
+(import kiss_firefox.API)
+(import refresh.WatchList)
+(import refresh.Message)
+
+(API.browser.menus.create
+    (object
+        id "watch_element"
+        title "Watch this element"
+        contexts ["link" "page"]))
+
+(API.browser.menus.create
+    (object
+        id "unwatch_element"
+        title "Unwatch this element"
+        contexts ["link" "page"]))
+
+// function source: https://stackoverflow.com/a/30484878 CC-BY-SA 3.0
+(var getSelectorFunction "
+function getSelector(node) {
+    var id = node.getAttribute('id');
+
+    if (id) {
+        return '#'+id;
+    }
+
+    var path = '';
+
+    while (node) {
+        var name = node.localName;
+        var parent = node.parentNode;
+
+        if (!parent) {
+            path = name + ' > ' + path;
+            continue;
+        }
+
+        if (node.getAttribute('id')) {
+            path = '#' + node.getAttribute('id') + ' > ' + path;
+            break;
+        }
+
+        var sameTagSiblings = [];
+        var children = parent.childNodes;
+        children = Array.prototype.slice.call(children);
+
+        children.forEach(function(child) {
+            if (child.localName == name) {
+                sameTagSiblings.push(child);
+            }
+        });
+
+        // if there are more than one children of that type use nth-of-type
+
+        if (sameTagSiblings.length > 1) {
+            var index = sameTagSiblings.indexOf(node);
+            name += ':nth-of-type(' + (index + 1) + ')';
+        }
+
+        if (path) {
+            path = name + ' > ' + path;
+        } else {
+            path = name;
+        }
+
+        node = parent;
+    }
+
+    return path;
+}
+")
+
+(API.browser.menus.onClicked.addListener ->[info tab] {
+    (case info.menuItemId
+        ("watch_element"
+            (API.browser.tabs.executeScript tab.id
+                (object
+                    frameId info.frameId
+                    code "
+$getSelectorFunction
+var element = browser.menus.getTargetElement(${info.targetElementId});
+browser.runtime.sendMessage({'action': 'addToWatchList', 'url': window.location.href, 'selector': getSelector(element), 'innerHTML': element.innerHTML});
+                    ")))
+        ("unwatch_element"
+            (API.browser.tabs.executeScript tab.id
+                (object
+                    frameId info.frameId
+                    code "
+$getSelectorFunction
+var element = browser.menus.getTargetElement(${info.targetElementId});
+browser.runtime.sendMessage({'action': 'removeFromWatchList', 'url': window.location.href, 'selector': getSelector(element)});
+"
+            )))
+        (never otherwise))
+})
+
+(API.browser.runtime.onMessage.addListener ->[:Message message sender sendResponse] {
+    (case message
+        ((objectWith [action "addToWatchList"] url selector innerHTML)
+            (WatchList.add url selector innerHTML))
+        ((objectWith [action "removeFromWatchList"] url selector)
+            (WatchList.remove url selector))
+        (never otherwise))
+    null
+})

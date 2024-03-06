@@ -1,0 +1,44 @@
+(import kiss_firefox.API)
+(import haxe.Serializer)
+(import haxe.Unserializer)
+
+(defMacro withWatchList [listSymbol &body body]
+    `(awaitLet [_listObj (API.browser.storage.sync.get (object watchList (new Map<String,Array<Dynamic>>)))
+                    &sync :haxe.DynamicAccess<Dynamic> ,listSymbol (dictGet _listObj "watchList")]
+        ,@body
+        (API.browser.storage.sync.set (object watchList ,listSymbol))
+        null))
+
+(function :Void add [:String url :String selector :String innerHTML]
+    (withWatchList wl
+        (ifLet [urlList (dictGet wl url)]
+                (urlList.push (objectWith selector innerHTML))
+            (dictSet wl url [(objectWith selector innerHTML)]))))
+
+(function :Void remove [:String url :String selector]
+    (withWatchList wl
+        (whenLet [urlList (dictGet wl url)]
+            (doFor [idx obj] (enumerate (cast urlList Array<Dynamic>))
+                (when (= obj.selector selector)
+                    (urlList.splice idx 1)
+                    (break))))))
+
+(function :Void forEach [:String url :String->Void operation]
+    (withWatchList wl
+        (whenLet [urlList (dictGet wl url)]
+            (doFor obj (cast urlList Array<Dynamic>)
+                (operation obj.selector)))))
+
+(function :Void update [:String url :String selector :String innerHTML :(String,String)->Void onChange :Void->Void onSame]
+    (withWatchList wl
+        (whenLet [urlList (dictGet wl url)]
+            (print urlList)
+            (doFor obj (cast urlList Array<Dynamic>)
+                (when (= obj.selector selector)
+                    (if (= innerHTML obj.innerHTML)
+                            (onSame)
+                        {
+                            (onChange obj.innerHTML innerHTML)
+                            (set obj.innerHTML innerHTML)
+                        })
+                    (break))))))
