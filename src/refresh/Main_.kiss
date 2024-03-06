@@ -2,19 +2,17 @@
 (import js.Browser)
 (import refresh.WatchList)
 
-(Browser.window.addEventListener "load" ->{
-    (let [url Browser.window.location.href]
-        (WatchList.forEach url
-            ->selector {
-                (whenLet [element (Browser.window.document.querySelector selector)]
-                    (WatchList.update url selector element.innerHTML
-                        // changed
-                        ->[oldHTML newHTML] {
-
-                        }
-                        // no change
-                        ->{
-                            (set element.style.color "gray")
-                        }))
-            }))
-})
+(let [url Browser.window.location.href]
+    (WatchList.forEach url
+        ->selector {
+            (whenLet [element (Browser.window.document.querySelector selector)]
+                (WatchList.update url selector element.innerHTML
+                    // changed
+                    ->[oldHTML newHTML] {
+                        (set element.innerHTML "<del style='color: red;'>${oldHTML}</del><ins style='color: green;'>${newHTML}</ins>")
+                    }
+                    // no change
+                    ->{
+                        (set element.style.color "gray")
+                    }))
+        }))

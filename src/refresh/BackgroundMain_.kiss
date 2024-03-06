@@ -102,3 +102,9 @@ browser.runtime.sendMessage({'action': 'removeFromWatchList', 'url': window.loca
         (never otherwise))
     null
 })
+
+(API.browser.browserAction.onClicked.addListener ->[tab info] {
+    (WatchList.forEachUrl ->url {
+        (API.browser.tabs.create (objectWith url))
+    })
+})

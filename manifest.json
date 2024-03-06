@@ -40,6 +40,7 @@
 	"permissions": [
 		"<all_urls>",
 		"storage",
-    "menus"
+    "menus",
+    "tabs"
   ]
 }

@@ -29,10 +29,14 @@
             (doFor obj (cast urlList Array<Dynamic>)
                 (operation obj.selector)))))
 
+(function :Void forEachUrl [:String->Void operation]
+    (withWatchList wl
+        (doFor =>url _ wl
+            (operation url))))
+
 (function :Void update [:String url :String selector :String innerHTML :(String,String)->Void onChange :Void->Void onSame]
     (withWatchList wl
         (whenLet [urlList (dictGet wl url)]
-            (print urlList)
             (doFor obj (cast urlList Array<Dynamic>)
                 (when (= obj.selector selector)
                     (if (= innerHTML obj.innerHTML)
