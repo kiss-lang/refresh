@@ -70,27 +70,28 @@ function getSelector(node) {
 ")
 
 (API.browser.menus.onClicked.addListener ->[info tab] {
-    (case info.menuItemId
-        ("watch_element"
-            (API.browser.tabs.executeScript tab.id
-                (object
-                    frameId info.frameId
-                    code "
+    (withFunctions
+        [
+            (runCode [code]
+                (API.browser.tabs.executeScript tab.id
+                    (objectWith
+                        info.frameId
+                        code)))
+        ]
+        (case info.menuItemId
+            ("watch_element"
+                (runCode "
 $getSelectorFunction
 var element = browser.menus.getTargetElement(${info.targetElementId});
 browser.runtime.sendMessage({'action': 'addToWatchList', 'url': window.location.href, 'selector': getSelector(element), 'innerHTML': element.innerHTML});
-                    ")))
-        ("unwatch_element"
-            (API.browser.tabs.executeScript tab.id
-                (object
-                    frameId info.frameId
-                    code "
+                        "))
+            ("unwatch_element"
+                (runCode "
 $getSelectorFunction
 var element = browser.menus.getTargetElement(${info.targetElementId});
 browser.runtime.sendMessage({'action': 'removeFromWatchList', 'url': window.location.href, 'selector': getSelector(element)});
-"
-            )))
-        (never otherwise))
+                        "))
+            (never otherwise)))
 })
 
 (API.browser.runtime.onMessage.addListener ->[:Message message sender sendResponse] {
