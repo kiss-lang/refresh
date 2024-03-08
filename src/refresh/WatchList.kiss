@@ -2,21 +2,22 @@
 (import haxe.Serializer)
 (import haxe.Unserializer)
 
-(defMacro withWatchList [listSymbol &body body]
+(defMacro withWatchList [change listSymbol &body body]
     `(awaitLet [_listObj (API.browser.storage.sync.get (object watchList (new Map<String,Array<Dynamic>>)))
                     &sync :haxe.DynamicAccess<Dynamic> ,listSymbol (dictGet _listObj "watchList")]
         ,@body
-        (API.browser.storage.sync.set (object watchList ,listSymbol))
-        null))
+        (if ,change
+                (API.browser.storage.sync.set (object watchList ,listSymbol))
+            null)))
 
-(function :Void add [:String url :String selector :String innerHTML]
-    (withWatchList wl
+(function add [:String url :String selector :String innerHTML]
+    (withWatchList true wl
         (ifLet [urlList (dictGet wl url)]
                 (urlList.push (objectWith selector innerHTML))
             (dictSet wl url [(objectWith selector innerHTML)]))))
 
-(function :Void remove [:String url :String selector]
-    (withWatchList wl
+(function remove [:String url :String selector]
+    (withWatchList true wl
         (whenLet [urlList (dictGet wl url)]
             (doFor [idx obj] (enumerate (cast urlList Array<Dynamic>))
                 (when (= obj.selector selector)
@@ -25,50 +26,48 @@
                         (wl.remove url))
                     (break))))))
 
-(function :Void clear [:String url]
-    (withWatchList wl
+(function clear [:String url]
+    (withWatchList true wl
         (when (wl.exists url)
             (wl.remove url))))
 
-(var &mut forEachMax -1)
-(var &mut forEachCount 0)
-(var &mut anyChanged false)
-(function :Void forEach [:String url :String->Void operation]
-    (withWatchList wl
+(function :Void forEachElement [:String url :(String,Void->Void)->Void operation :Void->Void cc]
+    (withWatchList false wl
         (whenLet [urlList (dictGet wl url)]
-            (set anyChanged false)
-            (set forEachCount 0)
-            (set forEachMax urlList.length)
-            (doFor obj (cast urlList Array<Dynamic>)
-                (operation obj.selector)))))
+            (withFunctions
+                [
+                    (next []
+                        (ifLet [obj (urlList.shift)]
+                                (operation obj.selector next)
+                            (cc)))
+                ]
+                (next)))))
 
 (function :Void forEachUrl [:(String,Void->Void)->Void operation]
-    (withWatchList wl
+    (withWatchList false wl
         (let [urls (collect (wl.keys))]
             (withFunctions
                 [
                     (:Void next []
-                        (let [url (urls.shift)
+                        (whenLet [url (urls.shift)
                                 list (dictGet wl url)]
-                            (if (and list !(= "h" url)) // I give up trying to understand why "h" is a key in every map in this environment
+                            (if !(= "h" url) // I give up trying to understand why "h" is a key in every map in this environment
                                     (operation url next)
                                 (next))))
                 ]
                 (next)))))
 
-(function :Void update [:String url :String selector :String innerHTML :(String,String)->Void onChange :Void->Void onSame]
-    (withWatchList wl
-        (whenLet [urlList (dictGet wl url)]
-            (doFor obj (cast urlList Array<Dynamic>)
-                (when (= obj.selector selector)
-                    (if (= innerHTML obj.innerHTML)
-                            (onSame)
-                        {
-                            (onChange obj.innerHTML innerHTML)
-                            (set obj.innerHTML innerHTML)
-                            (set anyChanged true)
-                        })
-                    (+= forEachCount 1)
-                    (when (= forEachCount forEachMax)
-                        (API.browser.runtime.sendMessage (objectWith [action (if anyChanged "changes" "noChanges")] url))))
-                    (break)))))
+(function :Void update [:String url :String selector :String innerHTML :(String,String)->Void onChange :Void->Void onSame :Void->Void cc]
+    (awaitLet [_
+                    (withWatchList true wl
+                        (whenLet [urlList (dictGet wl url)]
+                            (doFor obj (cast urlList Array<Dynamic>)
+                                (when (= obj.selector selector)
+                                    (if (= innerHTML obj.innerHTML)
+                                            (onSame)
+                                        {
+                                            (onChange obj.innerHTML innerHTML)
+                                            (set obj.innerHTML innerHTML)
+                                        })
+                                    (break)))))]
+        (cc)))

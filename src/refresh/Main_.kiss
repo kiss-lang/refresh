@@ -2,21 +2,35 @@
 (import js.Browser)
 (import refresh.WatchList)
 
-(Browser.window.addEventListener "load"
-    ->_
-        (let [url Browser.window.location.href]
-            (WatchList.forEach url
-                ->selector {
-                    (whenLet [element (Browser.window.document.querySelector selector)]
-                        (WatchList.update url selector element.innerHTML
-                            // changed
-                            ->[oldHTML newHTML] {
-                                (set element.innerHTML "<del style='color: red;'>${oldHTML}</del><ins style='color: green;'>${newHTML}</ins>")
-                                (once
-                                    (element.scrollIntoView false))
-                            }
-                            // no change
-                            ->{
-                                (set element.style.color "gray")
-                            }))
-                })))
+(withFunctions
+    [
+        (main []
+            (let [&mut anyChanged false
+                        url Browser.window.location.href]
+                    (WatchList.forEachElement url
+                        ->[selector next]
+                            (ifLet [element (Browser.window.document.querySelector selector)]
+                                    (WatchList.update url selector element.innerHTML
+                                        // changed
+                                        ->[oldHTML newHTML] {
+                                            (set anyChanged true)
+                                            (set element.innerHTML "<del style='color: red;'>${oldHTML}</del><ins style='color: green;'>${newHTML}</ins>")
+                                            (once
+                                                (element.scrollIntoView false))
+                                        }
+                                        // no change
+                                        ->{
+                                            (set element.style.color "gray")
+                                        }
+                                        // cc
+                                        next)
+                                // Missing element!
+                                {
+                                    (print "Missing element!")
+                                    (next)
+                                })
+                        ->:Void (API.browser.runtime.sendMessage (objectWith [action (if anyChanged "changes" "noChanges")] url)))))
+    ]
+    (if (= Browser.window.document.readyState "complete")
+            (main)
+        (Browser.window.addEventListener "load" main)))
