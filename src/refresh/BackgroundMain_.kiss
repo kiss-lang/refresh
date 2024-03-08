@@ -117,15 +117,21 @@ browser.runtime.sendMessage({'action': 'clearWatchList', 'url': window.location.
 })
 
 (API.browser.browserAction.onClicked.addListener ->[tab info] {
-    (WatchList.forEachUrl ->url {
+    (WatchList.forEachUrl ->[url next] {
         (awaitLet [tab (API.browser.tabs.create (objectWith url))]
             (let [&mut messageAlreadyReceived false]
                 (API.browser.runtime.onMessage.addListener ->[:Message message sender sendResponse] {
                     (case message
                         ((unless messageAlreadyReceived (objectWith [action "noChanges"] url))
                             (API.browser.tabs.remove tab.id)
-                            (set messageAlreadyReceived true))
+                            (set messageAlreadyReceived true)
+                            (next))
+                        ((unless messageAlreadyReceived (objectWith [action "changes"] url))
+                            (set messageAlreadyReceived true)
+                            (next))
                         (otherwise))
-                })))
+                    null
+                })
+                (API.browser.tabs.reload tab.id (object bypassCache true))))
     })
 })
