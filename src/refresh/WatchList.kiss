@@ -25,6 +25,11 @@
                         (wl.remove url))
                     (break))))))
 
+(function :Void clear [:String url]
+    (withWatchList wl
+        (when (wl.exists url)
+            (wl.remove url))))
+
 (function :Void forEach [:String url :String->Void operation]
     (withWatchList wl
         (whenLet [urlList (dictGet wl url)]

@@ -14,6 +14,12 @@
         title "Unwatch this element"
         contexts ["link" "page"]))
 
+(API.browser.menus.create
+    (object
+        id "clear_watched_elements"
+        title "Clear this page's watched elements"
+        contexts ["all"]))
+
 // function source: https://stackoverflow.com/a/30484878 CC-BY-SA 3.0
 (var getSelectorFunction "
 function getSelector(node) {
@@ -91,6 +97,10 @@ $getSelectorFunction
 var element = browser.menus.getTargetElement(${info.targetElementId});
 browser.runtime.sendMessage({'action': 'removeFromWatchList', 'url': window.location.href, 'selector': getSelector(element)});
                         "))
+            ("clear_watched_elements"
+                (runCode "
+browser.runtime.sendMessage({'action': 'clearWatchList', 'url': window.location.href});
+                        "))
             (never otherwise)))
 })
 
@@ -100,6 +110,8 @@ browser.runtime.sendMessage({'action': 'removeFromWatchList', 'url': window.loca
             (WatchList.add url selector innerHTML))
         ((objectWith [action "removeFromWatchList"] url selector)
             (WatchList.remove url selector))
+        ((objectWith [action "clearWatchList"] url)
+            (WatchList.clear url))
         (never otherwise))
     null
 })
