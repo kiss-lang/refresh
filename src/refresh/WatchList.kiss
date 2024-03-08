@@ -30,9 +30,15 @@
         (when (wl.exists url)
             (wl.remove url))))
 
+(var &mut forEachMax -1)
+(var &mut forEachCount 0)
+(var &mut anyChanged false)
 (function :Void forEach [:String url :String->Void operation]
     (withWatchList wl
         (whenLet [urlList (dictGet wl url)]
+            (set anyChanged false)
+            (set forEachCount 0)
+            (set forEachMax urlList.length)
             (doFor obj (cast urlList Array<Dynamic>)
                 (operation obj.selector)))))
 
@@ -52,5 +58,10 @@
                         {
                             (onChange obj.innerHTML innerHTML)
                             (set obj.innerHTML innerHTML)
+                            (set anyChanged true)
                         })
+                    (+= forEachCount 1)
+                    (when (= forEachCount forEachMax)
+                        (unless anyChanged
+                            (API.browser.runtime.sendMessage (objectWith [action "noChanges"] url))))
                     (break))))))
