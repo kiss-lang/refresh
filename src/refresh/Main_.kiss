@@ -10,6 +10,8 @@
                     // changed
                     ->[oldHTML newHTML] {
                         (set element.innerHTML "<del style='color: red;'>${oldHTML}</del><ins style='color: green;'>${newHTML}</ins>")
+                        (once
+                            (element.scrollIntoView false))
                     }
                     // no change
                     ->{
