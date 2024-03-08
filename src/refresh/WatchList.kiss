@@ -21,6 +21,8 @@
             (doFor [idx obj] (enumerate (cast urlList Array<Dynamic>))
                 (when (= obj.selector selector)
                     (urlList.splice idx 1)
+                    (when (= 0 urlList.length)
+                        (wl.remove url))
                     (break))))))
 
 (function :Void forEach [:String url :String->Void operation]
