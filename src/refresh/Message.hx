@@ -3,6 +3,6 @@ package refresh;
 typedef Message = {
     action:String,
     url:String,
-    selector:String,
+    ?selector:String,
     ?innerHTML:String
 };
